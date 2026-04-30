@@ -1,0 +1,53 @@
+# Azure Container Apps Deployment Configuration
+# Use with: az containerapp up --resource-group myRG --name coderubric --file azure-deploy.yaml
+
+apiVersion: 2023-05-01
+kind: ContainerApp
+metadata:
+  name: coderubric
+spec:
+  configuration:
+    activeRevisionsMode: Multiple
+    ingress:
+      external: true
+      targetPort: 8000
+      traffic:
+        - weight: 100
+          latestRevision: true
+    secrets:
+      - name: openai-api-key
+        keyVaultUrl: https://<your-keyvault>.vault.azure.net/secrets/openai-api-key
+        identity: system
+      - name: db-url
+        value: "postgresql://<user>:<pass>@<host>:5432/coderubric"
+  template:
+    containers:
+      - image: <your-registry>.azurecr.io/coderubric-backend:latest
+        name: backend
+        resources:
+          cpu: 1.0
+          memory: 2Gi
+        env:
+          - name: DATABASE_URL
+            secretRef: db-url
+          - name: OPENAI_API_KEY
+            secretRef: openai-api-key
+          - name: VECTOR_STORE_PATH
+            value: "/mnt/chroma"
+        volumeMounts:
+          - mountPath: /mnt/chroma
+            volumeName: chroma-volume
+    volumes:
+      - name: chroma-volume
+        storageName: chromastorage
+        storageType: AzureFile
+    scale:
+      minReplicas: 1
+      maxReplicas: 3
+      rules:
+        - name: cpu-scaling
+          custom:
+            type: cpu
+            metadata:
+              type: Utilization
+              value: "70"
