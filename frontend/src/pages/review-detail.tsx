@@ -168,11 +168,24 @@ function ReviewDetail() {
             </h2>
           </div>
 
-          {!issues || issues.length === 0 ? (
+          {review.total_files === 0 ? (
+            <div className="p-8 text-center">
+              <AlertCircle className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
+              <p className="text-lg font-medium">No code changes detected</p>
+              <p className="text-muted-foreground">
+                {review.error_message || 'No diff was found between the specified branches. This usually means both branches point to the same commit.'}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Try reviewing with different source/target branches, or ensure the repository has multiple branches with diverging commits.
+              </p>
+            </div>
+          ) : (!issues || issues.length === 0) ? (
             <div className="p-8 text-center">
               <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
               <p className="text-lg font-medium">No issues found!</p>
-              <p className="text-muted-foreground">Your code looks great</p>
+              <p className="text-muted-foreground">
+                Reviewed {review.total_files} file{review.total_files !== 1 ? 's' : ''} — your code looks great
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border">

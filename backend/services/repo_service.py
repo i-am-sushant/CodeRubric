@@ -6,12 +6,12 @@ Handles repository cloning, indexing, and RAG embedding generation.
 
 import os
 import logging
-import tempfile
+import shutil
 import uuid
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from git import Repo
+from git import Repo, GitCommandError
 from sqlalchemy.orm import Session
 
 from backend.config import get_settings
@@ -71,37 +71,66 @@ class RepositoryService:
         
         self.db.commit()
         
-        temp_dir = None
+        # Build a persistent clone directory
+        clone_dir = os.path.join(
+            settings.repo_clone_path, f"{repo_id}_{branch}"
+        )
+        
         try:
-            # Clone repository
-            logger.info(f"Cloning {repo_url} (branch: {branch})")
-            temp_dir = tempfile.mkdtemp(prefix=f"coderubric_{repo_id}_")
-            repo = Repo.clone_from(repo_url, temp_dir, branch=branch, depth=1)
+            # Clean up any previous partial clone
+            if os.path.exists(clone_dir):
+                shutil.rmtree(clone_dir, ignore_errors=True)
             
-            db_repo.local_path = temp_dir
+            os.makedirs(clone_dir, exist_ok=True)
+            
+            # Clone repository with strict error handling
+            logger.info(f"Cloning {repo_url} (branch: {branch}) into {clone_dir}")
+            try:
+                repo = Repo.clone_from(
+                    repo_url, clone_dir, branch=branch
+                )
+            except GitCommandError as git_err:
+                raise RuntimeError(
+                    f"Git clone failed for {repo_url}: {git_err}"
+                ) from git_err
+            
+            # Verify the clone succeeded and .git directory exists
+            if not os.path.isdir(os.path.join(clone_dir, ".git")):
+                raise RuntimeError(
+                    f"Clone directory {clone_dir} missing .git — clone did not complete"
+                )
+            
+            # Persist the absolute path immediately — clone succeeded
+            clone_abs = os.path.abspath(clone_dir)
+            db_repo.local_path = clone_abs
             self.db.commit()
             
-            # Index repository
-            stats = await self._index_repository(repo, repo_id)
+            # Index repository (embedding step — optional for non-RAG reviews)
+            try:
+                stats = await self._index_repository(repo, repo_id)
+                
+                db_repo.index_status = "completed"
+                db_repo.chunks_count = stats['chunks_created']
+                self.db.commit()
+                
+                logger.info(f"Indexing complete: {stats}")
+                return stats
+            except Exception as idx_err:
+                # Clone is fine, only embedding failed — keep clone dir
+                logger.error(f"Indexing failed (clone preserved): {idx_err}")
+                db_repo.index_status = "failed"
+                self.db.commit()
+                raise
             
-            # Update database
-            db_repo.index_status = "completed"
-            db_repo.chunks_count = stats['chunks_created']
-            db_repo.local_path = temp_dir  # Keep the clone
-            self.db.commit()
-            
-            logger.info(f"Indexing complete: {stats}")
-            return stats
-            
-        except Exception as e:
-            logger.error(f"Error indexing repository: {e}")
+        except (RuntimeError, GitCommandError) as clone_err:
+            # Clone itself failed — wipe everything
+            logger.error(f"Clone failed for repository: {clone_err}")
             db_repo.index_status = "failed"
+            db_repo.local_path = None
             self.db.commit()
             
-            # Cleanup
-            if temp_dir and os.path.exists(temp_dir):
-                import shutil
-                shutil.rmtree(temp_dir, ignore_errors=True)
+            if os.path.exists(clone_dir):
+                shutil.rmtree(clone_dir, ignore_errors=True)
             
             raise
     
@@ -213,7 +242,6 @@ class RepositoryService:
         
         # Delete local files
         if db_repo.local_path and os.path.exists(db_repo.local_path):
-            import shutil
             shutil.rmtree(db_repo.local_path, ignore_errors=True)
         
         # Delete database record

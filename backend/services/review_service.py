@@ -20,7 +20,9 @@ from backend.config import get_settings
 from backend.database import Review, Issue, Repository as RepoModel
 from backend.schemas import ReviewCreate, ReviewProgress
 from coderubric.core.rag_review import RAGCodeReviewer, RAGReviewConfig
+from coderubric.core.standard_reviewer import StandardReviewer
 from gito.report_struct import ReviewTarget
+from gito.constants import REFS_VALUE_ALL
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -79,24 +81,30 @@ class ReviewService:
             repo = Repo(db_repo.local_path)
             
             # Create review target
+            if review_data.review_all:
+                what = REFS_VALUE_ALL
+                use_merge_base = False
+            else:
+                what = review_data.source_branch
+                use_merge_base = True
+            
             target = ReviewTarget(
                 git_platform_type=None,
                 repo_url=db_repo.url,
                 pull_request_id=None,
-                what=review_data.source_branch,
+                what=what,
                 against=review_data.target_branch,
                 filters=review_data.filters or "",
-                use_merge_base=True,
+                use_merge_base=use_merge_base,
                 commit_sha=repo.head.commit.hexsha,
                 active_branch=review_data.source_branch
             )
             
-            # Initialize reviewer
+            # Initialize reviewer — dual-mode selection
             if review_data.use_rag:
                 reviewer = RAGCodeReviewer(self.rag_config)
             else:
-                no_rag_config = RAGReviewConfig(enabled=False)
-                reviewer = RAGCodeReviewer(no_rag_config)
+                reviewer = StandardReviewer()
             
             # Run review
             logger.info(f"Starting review {review_id} for repo {review_data.repo_id}")

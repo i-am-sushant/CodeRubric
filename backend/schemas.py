@@ -55,6 +55,7 @@ class ReviewBase(BaseModel):
     source_branch: Optional[str] = "HEAD"
     use_rag: bool = True
     filters: Optional[str] = ""
+    review_all: bool = False
 
 
 class ReviewCreate(ReviewBase):
@@ -136,6 +137,50 @@ class ReportDetail(BaseModel):
     summary: ReportSummary
     issues: List[IssueResponse]
     markdown_content: Optional[str] = None
+
+
+# Ask about code changes
+class AskRequest(BaseModel):
+    repo_id: str
+    question: str
+    source_branch: Optional[str] = "HEAD"
+    target_branch: Optional[str] = "main"
+    filters: Optional[str] = ""
+
+
+class AskResponse(BaseModel):
+    answer: str
+    repo_id: str
+    question: str
+
+
+# Quick Review (clone + review in one step)
+class QuickReviewRequest(BaseModel):
+    repo_url: str
+    branch: Optional[str] = "main"
+    source_branch: Optional[str] = "HEAD"
+    target_branch: Optional[str] = "main"
+    use_rag: bool = False
+    filters: Optional[str] = ""
+    review_all: bool = False
+
+
+# Settings
+class LLMSettingsResponse(BaseModel):
+    llm_api_type: str
+    model: str
+    has_api_key: bool
+    embedding_model: str
+    vector_store_path: str
+
+    class Config:
+        from_attributes = True
+
+
+class LLMSettingsUpdate(BaseModel):
+    llm_api_key: Optional[str] = None
+    llm_api_type: Optional[str] = None
+    model: Optional[str] = None
 
 
 # WebSocket Messages

@@ -14,6 +14,7 @@ import type { Repository } from '@/types'
 
 function Repositories() {
   const [newRepoUrl, setNewRepoUrl] = useState('')
+  const [newRepoBranch, setNewRepoBranch] = useState('main')
   const queryClient = useQueryClient()
 
   const { data: repos, isLoading } = useQuery<Repository[]>({
@@ -25,15 +26,16 @@ function Repositories() {
   })
 
   const addRepoMutation = useMutation({
-    mutationFn: async (url: string) => {
+    mutationFn: async ({ url, branch }: { url: string; branch: string }) => {
       const res = await apiClient.post('/repos/', {
         repo_url: url,
-        branch: 'main'
+        branch
       })
       return res.data
     },
     onSuccess: () => {
       setNewRepoUrl('')
+      setNewRepoBranch('main')
       queryClient.invalidateQueries({ queryKey: ['repositories'] })
     }
   })
@@ -50,7 +52,7 @@ function Repositories() {
   const handleAddRepo = (e: React.FormEvent) => {
     e.preventDefault()
     if (newRepoUrl.trim()) {
-      addRepoMutation.mutate(newRepoUrl.trim())
+      addRepoMutation.mutate({ url: newRepoUrl.trim(), branch: newRepoBranch.trim() || 'main' })
     }
   }
 
@@ -81,26 +83,35 @@ function Repositories() {
       {/* Add Repository Form */}
       <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-lg font-semibold mb-4">Add Repository</h2>
-        <form onSubmit={handleAddRepo} className="flex gap-4">
-          <input
-            type="text"
-            placeholder="https://github.com/owner/repo.git"
-            value={newRepoUrl}
-            onChange={(e) => setNewRepoUrl(e.target.value)}
-            className="flex-1 px-4 py-2 border border-border rounded-lg bg-background"
-          />
-          <button
-            type="submit"
-            disabled={addRepoMutation.isPending || !newRepoUrl.trim()}
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
-          >
-            {addRepoMutation.isPending ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <Plus className="w-4 h-4" />
-            )}
-            Add
-          </button>
+        <form onSubmit={handleAddRepo} className="space-y-3">
+          <div className="flex gap-4">
+            <input
+              type="text"
+              placeholder="https://github.com/owner/repo.git"
+              value={newRepoUrl}
+              onChange={(e) => setNewRepoUrl(e.target.value)}
+              className="flex-1 px-4 py-2 border border-border rounded-lg bg-background"
+            />
+            <input
+              type="text"
+              placeholder="Branch (e.g. main, master)"
+              value={newRepoBranch}
+              onChange={(e) => setNewRepoBranch(e.target.value)}
+              className="w-48 px-4 py-2 border border-border rounded-lg bg-background"
+            />
+            <button
+              type="submit"
+              disabled={addRepoMutation.isPending || !newRepoUrl.trim()}
+              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
+            >
+              {addRepoMutation.isPending ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              Add
+            </button>
+          </div>
         </form>
         <p className="text-sm text-muted-foreground mt-2">
           Repository will be cloned and indexed for RAG context retrieval
@@ -146,7 +157,7 @@ function Repositories() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {repo.index_status === 'completed' && (
+                  {(repo.index_status === 'completed' || repo.local_path) && (
                     <a
                       href={`/new-review?repo=${repo.id}`}
                       className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors"

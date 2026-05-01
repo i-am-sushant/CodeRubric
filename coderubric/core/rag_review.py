@@ -27,6 +27,7 @@ from gito.project_config import ProjectConfig
 
 # Import RAG components
 from ..rag import CodeEmbedder, ChromaVectorStore, ContextRetriever
+from .base_reviewer import BaseReviewer
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class RAGReviewConfig:
     clear_existing_index: bool = False
 
 
-class RAGCodeReviewer:
+class RAGCodeReviewer(BaseReviewer):
     """Code reviewer with RAG context awareness."""
     
     def __init__(self, config: RAGReviewConfig = None):

@@ -1,34 +1,23 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
-import { FileSearch, GitBranch, Loader2, Filter, Layers } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Zap, GitBranch, Loader2, Filter, Layers } from 'lucide-react'
 import { apiClient } from '@/api/client'
-import type { Repository } from '@/types'
 
-function NewReview() {
-  const [searchParams] = useSearchParams()
-  const preselectedRepo = searchParams.get('repo')
-  
-  const [selectedRepo, setSelectedRepo] = useState(preselectedRepo || '')
+function QuickReview() {
+  const [repoUrl, setRepoUrl] = useState('')
+  const [branch, setBranch] = useState('main')
   const [sourceBranch, setSourceBranch] = useState('HEAD')
   const [targetBranch, setTargetBranch] = useState('main')
-  const [useRag, setUseRag] = useState(true)
+  const [useRag, setUseRag] = useState(false)
   const [filters, setFilters] = useState('')
   const [reviewAll, setReviewAll] = useState(false)
   const queryClient = useQueryClient()
 
-  const { data: repos } = useQuery<Repository[]>({
-    queryKey: ['repositories'],
-    queryFn: async () => {
-      const res = await apiClient.get('/repos/')
-      return res.data.repositories
-    }
-  })
-
-  const createReviewMutation = useMutation({
+  const quickReviewMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post('/reviews/', {
-        repo_id: selectedRepo,
+      const res = await apiClient.post('/reviews/quick-review', {
+        repo_url: repoUrl,
+        branch,
         source_branch: sourceBranch,
         target_branch: targetBranch,
         use_rag: useRag,
@@ -45,85 +34,78 @@ function NewReview() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    createReviewMutation.mutate()
+    quickReviewMutation.mutate()
   }
-
-  const indexedRepos = repos?.filter(r => r.index_status === 'completed') || []
-  const clonedRepos = repos?.filter(r => r.local_path) || []
-  const availableRepos = useRag ? indexedRepos : clonedRepos
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">New Code Review</h1>
+        <div className="flex items-center gap-3 mb-2">
+          <Zap className="w-8 h-8 text-yellow-500" />
+          <h1 className="text-3xl font-bold">Quick Review</h1>
+        </div>
         <p className="text-muted-foreground mt-1">
-          Analyze code changes with AI-powered review{useRag ? ' and RAG context' : ''}
+          Paste a GitHub URL and get a code review instantly — no pre-indexing needed
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Repository Selection */}
+        {/* Repository URL */}
         <div className="bg-card border border-border rounded-lg p-6">
           <label className="block text-sm font-medium mb-2">
-            Select Repository
+            Repository URL
           </label>
-          <select
-            value={selectedRepo}
-            onChange={(e) => setSelectedRepo(e.target.value)}
+          <input
+            type="text"
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            placeholder="https://github.com/owner/repo.git"
             required
             className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-          >
-            <option value="">Choose a repository...</option>
-            {availableRepos.map((repo) => (
-              <option key={repo.id} value={repo.id}>
-                {repo.name}{useRag ? ` (${repo.chunks_count} chunks indexed)` : ''}
-              </option>
-            ))}
-          </select>
-          {availableRepos.length === 0 && (
-            <p className="text-sm text-muted-foreground mt-2">
-              {useRag
-                ? 'No indexed repositories found. '
-                : 'No cloned repositories found. '}
-              <a href="/repos" className="text-primary hover:underline">
-                Add a repository first
-              </a>
+          />
+          <div className="mt-3">
+            <label className="block text-sm font-medium mb-1">Clone Branch</label>
+            <input
+              type="text"
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              placeholder="main"
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Default branch to clone (e.g. main, master, develop)
             </p>
-          )}
+          </div>
         </div>
 
         {/* Branch Configuration */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h3 className="font-medium mb-4 flex items-center gap-2">
             <GitBranch className="w-4 h-4" />
-            Branch Configuration
+            Diff Configuration
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Source Branch</label>
+              <label className="block text-sm font-medium mb-1">Source</label>
               <input
                 type="text"
                 value={sourceBranch}
                 onChange={(e) => setSourceBranch(e.target.value)}
-                placeholder="HEAD or feature-branch"
+                placeholder="HEAD"
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Branch to review (or HEAD for current)
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Branch to review</p>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Target Branch</label>
+              <label className="block text-sm font-medium mb-1">Target</label>
               <input
                 type="text"
                 value={targetBranch}
                 onChange={(e) => setTargetBranch(e.target.value)}
-                placeholder="main or master"
+                placeholder="main"
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Base branch for comparison
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Base branch for comparison</p>
             </div>
           </div>
         </div>
@@ -142,13 +124,12 @@ function NewReview() {
             className="w-full px-4 py-2 border border-border rounded-lg bg-background"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Only review files matching these patterns. Leave empty to review all changed files.
+            Only review files matching these patterns. Leave empty for all files.
           </p>
         </div>
 
         {/* Review Options */}
         <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-          {/* Review All Codebase Toggle */}
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-medium flex items-center gap-2">
@@ -157,8 +138,8 @@ function NewReview() {
               </h3>
               <p className="text-sm text-muted-foreground">
                 {reviewAll
-                  ? 'Reviewing ALL files in the repository, not just changes'
-                  : 'Only reviewing changes between source and target branches'}
+                  ? 'Reviewing ALL files, not just changes'
+                  : 'Only reviewing changes between branches'}
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -174,14 +155,13 @@ function NewReview() {
 
           <div className="border-t border-border" />
 
-          {/* RAG Toggle */}
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-medium">Enable RAG Context</h3>
               <p className="text-sm text-muted-foreground">
                 {useRag
-                  ? 'Context-aware review using indexed codebase (requires indexing)'
-                  : 'Quick review using only code diffs — no indexing needed'}
+                  ? 'Context-aware review (will index the repo first)'
+                  : 'Standard review using only code diffs'}
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -199,24 +179,30 @@ function NewReview() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={!selectedRepo || createReviewMutation.isPending}
-          className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          disabled={quickReviewMutation.isPending || !repoUrl.trim()}
+          className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {createReviewMutation.isPending ? (
+          {quickReviewMutation.isPending ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Starting Review...
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Cloning & Reviewing...
             </>
           ) : (
             <>
-              <FileSearch className="w-4 h-4" />
-              Start Code Review
+              <Zap className="w-5 h-5" />
+              Start Quick Review
             </>
           )}
         </button>
+
+        {quickReviewMutation.isError && (
+          <p className="text-sm text-red-500 text-center">
+            {(quickReviewMutation.error as Error).message || 'Failed to start review'}
+          </p>
+        )}
       </form>
     </div>
   )
 }
 
-export default NewReview
+export default QuickReview

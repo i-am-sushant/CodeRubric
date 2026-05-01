@@ -5,6 +5,8 @@ import {
   GitBranch, 
   FileSearch, 
   Plus, 
+  Zap,
+  MessageCircleQuestion,
   Settings,
   Code2
 } from 'lucide-react'
@@ -17,6 +19,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { path: '/repos', icon: GitBranch, label: 'Repositories' },
     { path: '/reviews', icon: FileSearch, label: 'Reviews' },
     { path: '/new-review', icon: Plus, label: 'New Review' },
+    { path: '/quick-review', icon: Zap, label: 'Quick Review' },
+    { path: '/ask', icon: MessageCircleQuestion, label: 'Ask About Code' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ]
 

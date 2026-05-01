@@ -149,6 +149,11 @@ Review the provided code diff carefully and identify *only* highly confident iss
 {{ file_lines }}
 {%- endif %}
 
+{% if rag_context -%}
+----RELATED CODEBASE CONTEXT (retrieved via RAG)----
+{{ rag_context }}
+{%- endif %}
+
 ----TASK GUIDELINES----
 - Only report issues you are **100% confident** are relevant to any context.
 - Never report issues related to software versions, model names, or similar details that you believe have not yet been released—you cannot reliably determine this.

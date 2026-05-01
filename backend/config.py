@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     n_context_results: int = 5
     max_contexts_per_file: int = 3
     
+    # Repository clone storage (persistent directory)
+    repo_clone_path: str = os.getenv(
+        "REPO_CLONE_PATH",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "repos")
+    )
+    
     # LLM
     llm_api_key: str = os.getenv("LLM_API_KEY", os.getenv("OPENAI_API_KEY", ""))
     llm_api_type: str = os.getenv("LLM_API_TYPE", "openai")

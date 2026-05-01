@@ -14,7 +14,8 @@ from backend.schemas import (
     ReviewList,
     IssueResponse,
     IssueList,
-    ReviewProgress
+    ReviewProgress,
+    QuickReviewRequest
 )
 from backend.services.review_service import ReviewService
 from backend.api.ws import send_progress_update
@@ -223,3 +224,100 @@ async def rerun_review(
     background_tasks.add_task(run_review)
     
     return ReviewResponse.model_validate(db_review)
+
+
+@router.post("/quick-review", response_model=ReviewResponse)
+async def quick_review(
+    req: QuickReviewRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    Quick review: clone a repo (if needed) and start a review in one step.
+    No pre-indexing required — uses standard (non-RAG) review by default.
+    """
+    from backend.database import Review as ReviewModel, Repository as RepoModel, SessionLocal
+    from backend.services.repo_service import RepositoryService
+    from datetime import datetime
+    import uuid
+    
+    try:
+        # Derive repo_id from URL
+        repo_id = req.repo_url.split('/')[-1].replace('.git', '')
+        
+        # Check if repo already exists and is cloned
+        existing = db.query(RepoModel).filter(RepoModel.id == repo_id).first()
+        needs_clone = not existing or not existing.local_path
+        
+        if not existing:
+            db_repo = RepoModel(
+                id=repo_id,
+                name=repo_id,
+                url=req.repo_url,
+                index_status="indexing"
+            )
+            db.add(db_repo)
+            db.commit()
+        
+        # Create review record
+        review_id = str(uuid.uuid4())
+        db_review = ReviewModel(
+            id=review_id,
+            repo_id=repo_id,
+            status="pending",
+            target_branch=req.target_branch,
+            source_branch=req.source_branch,
+            use_rag=1 if req.use_rag else 0,
+            started_at=datetime.utcnow()
+        )
+        db.add(db_review)
+        db.commit()
+        db.refresh(db_review)
+        
+        # Background: clone (if needed) then review
+        async def bg_quick_review():
+            bg_db = SessionLocal()
+            try:
+                if needs_clone:
+                    repo_service = RepositoryService(bg_db)
+                    await repo_service.clone_and_index(
+                        repo_url=req.repo_url,
+                        branch=req.branch,
+                        repo_id=repo_id
+                    )
+                
+                review_data = ReviewCreate(
+                    repo_id=repo_id,
+                    source_branch=req.source_branch,
+                    target_branch=req.target_branch,
+                    use_rag=req.use_rag,
+                    filters=req.filters or '',
+                    review_all=req.review_all
+                )
+                
+                review_service = ReviewService(bg_db)
+                
+                async def progress_cb(progress: ReviewProgress):
+                    await send_progress_update(review_id, progress.model_dump())
+                
+                await review_service.run_review_for_id(
+                    review_id=review_id,
+                    review_data=review_data,
+                    progress_callback=progress_cb
+                )
+            except Exception as e:
+                logger.error(f"Quick review {review_id} failed: {e}")
+                await send_progress_update(review_id, {
+                    "status": "failed",
+                    "error": str(e)
+                })
+            finally:
+                bg_db.close()
+        
+        background_tasks.add_task(bg_quick_review)
+        
+        return ReviewResponse.model_validate(db_review)
+        
+    except Exception as e:
+        logger.error(f"Error starting quick review: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -21,6 +21,13 @@ COPY coderubric ./coderubric
 COPY backend ./backend
 COPY gito ./gito
 
+# Create persistent data directories
+RUN mkdir -p /app/data/repos
+
+# Copy and prepare entrypoint
+COPY backend/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
@@ -28,5 +35,5 @@ ENV PYTHONUNBUFFERED=1
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run migrations then start the server
+ENTRYPOINT ["/app/entrypoint.sh"]

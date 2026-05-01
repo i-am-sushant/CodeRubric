@@ -14,7 +14,8 @@ from fastapi.responses import FileResponse
 
 from backend.config import get_settings
 from backend.database import init_db
-from backend.api.routes import repos, reviews, health, stats
+from backend.api.routes import repos, reviews, health, stats, ask
+from backend.api.routes import settings as settings_route
 from backend.api.ws import active_connections, send_progress_update  # noqa: F401
 
 # Configure logging
@@ -27,16 +28,43 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
+def _init_microcore():
+    """Initialize microcore LLM framework for gito review/ask operations."""
+    import microcore as mc
+    from pathlib import Path
+
+    gito_tpl_path = Path(__file__).resolve().parent.parent.parent / "gito" / "tpl"
+    gito_project_folder = ".gito"
+
+    try:
+        mc.configure(
+            USE_LOGGING=True,
+            VALIDATE_CONFIG=False,
+            EMBEDDING_DB_TYPE=mc.EmbeddingDbType.NONE,
+            PROMPT_TEMPLATES_PATH=[gito_project_folder, str(gito_tpl_path)],
+        )
+        cfg = mc.config()
+        logger.info(
+            f"microcore configured: api_type={cfg.LLM_API_TYPE}, "
+            f"model={cfg.MODEL}, platform={cfg.LLM_API_PLATFORM}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize microcore: {e}")
+        raise
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
-    logger.info("Starting CodeRubric API...")
+    print("[CodeRubric] Starting API...", flush=True)
     init_db()
-    logger.info("Database initialized")
+    print("[CodeRubric] Database initialized", flush=True)
+    _init_microcore()
+    print("[CodeRubric] LLM framework initialized", flush=True)
     yield
     # Shutdown
-    logger.info("Shutting down CodeRubric API...")
+    print("[CodeRubric] Shutting down...", flush=True)
 
 
 # Create FastAPI app
@@ -67,6 +95,8 @@ app.include_router(health.router, prefix="/api/health", tags=["health"])
 app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 app.include_router(repos.router, prefix="/api/repos", tags=["repositories"])
 app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
+app.include_router(ask.router, prefix="/api/ask", tags=["ask"])
+app.include_router(settings_route.router, prefix="/api/settings", tags=["settings"])
 
 # WebSocket for real-time progress updates
 

@@ -4,7 +4,9 @@ import {
   FileSearch, 
   AlertTriangle, 
   TrendingUp,
-  Activity
+  Activity,
+  Zap,
+  MessageCircleQuestion
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import type { Stats } from '@/types'
@@ -117,6 +119,30 @@ function Dashboard() {
               <div>
                 <p className="font-medium">Start New Review</p>
                 <p className="text-sm text-muted-foreground">Analyze code with RAG context</p>
+              </div>
+            </a>
+            <a 
+              href="/quick-review" 
+              className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors"
+            >
+              <div className="bg-yellow-500 p-2 rounded">
+                <Zap className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="font-medium">Quick Review</p>
+                <p className="text-sm text-muted-foreground">Paste a URL and review instantly</p>
+              </div>
+            </a>
+            <a 
+              href="/ask" 
+              className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent transition-colors"
+            >
+              <div className="bg-blue-500 p-2 rounded">
+                <MessageCircleQuestion className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="font-medium">Ask About Code</p>
+                <p className="text-sm text-muted-foreground">Ask questions about code changes</p>
               </div>
             </a>
             <a 

@@ -6,6 +6,8 @@ import Repositories from '@/pages/repositories'
 import Reviews from '@/pages/reviews'
 import ReviewDetail from '@/pages/review-detail'
 import NewReview from '@/pages/new-review'
+import QuickReview from '@/pages/quick-review'
+import Ask from '@/pages/ask'
 import Settings from '@/pages/settings'
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
         <Route path="/reviews" element={<Reviews />} />
         <Route path="/reviews/:id" element={<ReviewDetail />} />
         <Route path="/new-review" element={<NewReview />} />
+        <Route path="/quick-review" element={<QuickReview />} />
+        <Route path="/ask" element={<Ask />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
       <Toaster />
