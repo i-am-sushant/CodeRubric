@@ -914,4 +914,4 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 
 Licensed under the [MIT License](LICENSE).
 
-Built upon the [Gito](https://github.com/Sushant/CodeRubric) codebase by Vitalii Stepanenko and contributors.
+Built upon the [Gito](https://github.com/Sushant/CodeRubric) codebase by Sushant Kumar Mishra and contributors.
