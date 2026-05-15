@@ -9,6 +9,7 @@ import logging
 import microcore as mc
 from fastapi import APIRouter, HTTPException
 
+from backend.config import normalize_llm_api_base
 from backend.schemas import LLMSettingsResponse, LLMSettingsUpdate
 
 router = APIRouter()
@@ -21,13 +22,13 @@ SUPPORTED_PROVIDERS = [
     {"value": "anthropic", "label": "Anthropic Claude", "placeholder": "sk-ant-..."},
 ]
 
-
 @router.get("/", response_model=LLMSettingsResponse)
 async def get_settings():
     """Return the current LLM configuration (never exposes the raw API key)."""
     cfg = mc.config()
     return LLMSettingsResponse(
         llm_api_type=str(cfg.LLM_API_TYPE or ""),
+        llm_api_base=str(cfg.LLM_API_BASE or ""),
         model=str(cfg.MODEL or ""),
         has_api_key=bool(cfg.LLM_API_KEY),
         embedding_model=os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2"),
@@ -58,6 +59,15 @@ async def update_settings(update: LLMSettingsUpdate):
         os.environ["LLM_API_TYPE"] = update.llm_api_type
         env_overrides["LLM_API_TYPE"] = update.llm_api_type
 
+    if update.llm_api_base is not None:
+        llm_api_base = normalize_llm_api_base(update.llm_api_base)
+        if llm_api_base:
+            os.environ["LLM_API_BASE"] = llm_api_base
+            env_overrides["LLM_API_BASE"] = llm_api_base
+        else:
+            os.environ.pop("LLM_API_BASE", None)
+            env_overrides["LLM_API_BASE"] = ""
+
     if update.model is not None:
         os.environ["MODEL"] = update.model
         env_overrides["MODEL"] = update.model
@@ -78,11 +88,13 @@ async def update_settings(update: LLMSettingsUpdate):
         cfg = mc.config()
         logger.info(
             f"microcore reconfigured: api_type={cfg.LLM_API_TYPE}, "
-            f"model={cfg.MODEL}, platform={cfg.LLM_API_PLATFORM}"
+            f"model={cfg.MODEL}, platform={cfg.LLM_API_PLATFORM}, "
+            f"api_base={cfg.LLM_API_BASE}"
         )
 
         return LLMSettingsResponse(
             llm_api_type=str(cfg.LLM_API_TYPE or ""),
+            llm_api_base=str(cfg.LLM_API_BASE or ""),
             model=str(cfg.MODEL or ""),
             has_api_key=bool(cfg.LLM_API_KEY),
             embedding_model=os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2"),

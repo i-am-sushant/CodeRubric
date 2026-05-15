@@ -4,6 +4,7 @@ import axios from 'axios'
 
 interface LLMSettings {
   llm_api_type: string
+  llm_api_base: string
   model: string
   has_api_key: boolean
   embedding_model: string
@@ -22,6 +23,8 @@ const MODEL_SUGGESTIONS: Record<string, string[]> = {
   anthropic: ['claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
 }
 
+const ASHNA_API_BASE = 'https://api.ashna.ai/v1/api'
+
 function SettingsPage() {
   const [current, setCurrent] = useState<LLMSettings | null>(null)
   const [providers, setProviders] = useState<Provider[]>([])
@@ -33,6 +36,7 @@ function SettingsPage() {
   // Form state
   const [apiKey, setApiKey] = useState('')
   const [apiType, setApiType] = useState('')
+  const [apiBase, setApiBase] = useState('')
   const [model, setModel] = useState('')
 
   const fetchSettings = async () => {
@@ -45,6 +49,7 @@ function SettingsPage() {
       setCurrent(settingsRes.data)
       setProviders(providersRes.data)
       setApiType(settingsRes.data.llm_api_type)
+      setApiBase(settingsRes.data.llm_api_base || '')
       setModel(settingsRes.data.model)
     } catch (e: any) {
       setError('Failed to load settings: ' + (e.response?.data?.detail || e.message))
@@ -61,8 +66,10 @@ function SettingsPage() {
     setSuccess('')
     try {
       const payload: Record<string, string> = {}
+      const normalizedApiBase = apiBase.trim()
       if (apiKey) payload.llm_api_key = apiKey
       if (apiType && apiType !== current?.llm_api_type) payload.llm_api_type = apiType
+      if (normalizedApiBase !== (current?.llm_api_base || '')) payload.llm_api_base = normalizedApiBase
       if (model && model !== current?.model) payload.model = model
 
       if (Object.keys(payload).length === 0) {
@@ -85,6 +92,7 @@ function SettingsPage() {
 
   const selectedPlaceholder = providers.find(p => p.value === apiType)?.placeholder || 'Your API key'
   const modelOptions = MODEL_SUGGESTIONS[apiType] || []
+  const isAshnaBase = apiBase.includes('api.ashna.ai')
 
   if (loading) {
     return (
@@ -127,10 +135,16 @@ function SettingsPage() {
             </button>
           </div>
           {current && (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-3 bg-accent/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Provider</p>
                 <p className="font-medium">{current.llm_api_type || 'not set'}</p>
+              </div>
+              <div className="p-3 bg-accent/50 rounded-lg">
+                <p className="text-xs text-muted-foreground">Base URL</p>
+                <p className="font-medium truncate" title={current.llm_api_base || 'default'}>
+                  {current.llm_api_base || 'default'}
+                </p>
               </div>
               <div className="p-3 bg-accent/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">Model</p>
@@ -178,6 +192,32 @@ function SettingsPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium mb-2">API Base URL</label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={apiBase}
+                  onChange={(e) => setApiBase(e.target.value)}
+                  placeholder={ASHNA_API_BASE}
+                  className="flex-1 px-4 py-2 border border-border rounded-lg bg-background"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApiType('openai')
+                    setApiBase(ASHNA_API_BASE)
+                  }}
+                  className="px-3 py-2 border border-border rounded-lg hover:bg-accent transition-colors text-sm"
+                >
+                  Use Ashna
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                For Ashna, use provider <code>openai</code> and base URL <code>{ASHNA_API_BASE}</code>.
+              </p>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium mb-2">API Key</label>
               <input
                 type="password"
@@ -198,7 +238,7 @@ function SettingsPage() {
                   type="text"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g. gemini-2.0-flash"
+                  placeholder={isAshnaBase ? 'Ashna model name' : 'e.g. gemini-2.0-flash'}
                   className="flex-1 px-4 py-2 border border-border rounded-lg bg-background"
                 />
               </div>

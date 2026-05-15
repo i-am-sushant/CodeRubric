@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from backend.config import get_settings
+from backend.config import get_settings, normalize_llm_api_base
 from backend.database import init_db
 from backend.api.routes import repos, reviews, health, stats, ask
 from backend.api.routes import settings as settings_route
@@ -37,6 +37,9 @@ def _init_microcore():
     gito_project_folder = ".gito"
 
     try:
+        if os.environ.get("LLM_API_BASE"):
+            os.environ["LLM_API_BASE"] = normalize_llm_api_base(os.environ["LLM_API_BASE"])
+
         mc.configure(
             USE_LOGGING=True,
             VALIDATE_CONFIG=False,
@@ -46,7 +49,8 @@ def _init_microcore():
         cfg = mc.config()
         logger.info(
             f"microcore configured: api_type={cfg.LLM_API_TYPE}, "
-            f"model={cfg.MODEL}, platform={cfg.LLM_API_PLATFORM}"
+            f"model={cfg.MODEL}, platform={cfg.LLM_API_PLATFORM}, "
+            f"api_base={cfg.LLM_API_BASE}"
         )
     except Exception as e:
         logger.error(f"Failed to initialize microcore: {e}")

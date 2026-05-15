@@ -168,6 +168,7 @@ class QuickReviewRequest(BaseModel):
 # Settings
 class LLMSettingsResponse(BaseModel):
     llm_api_type: str
+    llm_api_base: str
     model: str
     has_api_key: bool
     embedding_model: str
@@ -180,6 +181,7 @@ class LLMSettingsResponse(BaseModel):
 class LLMSettingsUpdate(BaseModel):
     llm_api_key: Optional[str] = None
     llm_api_type: Optional[str] = None
+    llm_api_base: Optional[str] = None
     model: Optional[str] = None
 
 

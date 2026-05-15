@@ -149,6 +149,7 @@ CodeRubric uses [ai-microcore](https://github.com/Nayjest/ai-microcore) for vend
 | Google Gemini | `google` | `gemini-2.0-flash` |
 | OpenAI | `openai` | `gpt-4o-mini`, `gpt-4o` |
 | Anthropic | `anthropic` | `claude-sonnet-4-20250514` |
+| Ashna AI | `openai` + `LLM_API_BASE=https://api.ashna.ai/v1/api` | (Ashna model name) |
 | OpenRouter / Mistral | `openai` | `mistralai/mistral-7b-instruct` |
 | Azure OpenAI | `azure` | (your deployment name) |
 | Local (Ollama, vLLM) | `openai` | (local model name) |
@@ -201,6 +202,12 @@ MODEL=gemini-2.0-flash
 # LLM_API_KEY=sk-your-openai-key
 # LLM_API_TYPE=openai
 # MODEL=gpt-4o-mini
+
+# — OR — Ashna AI (OpenAI-compatible)
+# LLM_API_KEY=your-ashna-api-key
+# LLM_API_TYPE=openai
+# LLM_API_BASE=https://api.ashna.ai/v1/api
+# MODEL=your-ashna-model
 
 # — OR — Anthropic
 # LLM_API_KEY=sk-ant-your-key
@@ -534,6 +541,7 @@ Copy `.env.example` to `.env` and fill in your values:
 |----------|-------------|----------|
 | `LLM_API_KEY` | API key for your LLM provider | (required) |
 | `LLM_API_TYPE` | Provider type: `google`, `openai`, `anthropic` | `openai` |
+| `LLM_API_BASE` | Optional OpenAI-compatible base URL, such as Ashna AI | provider default |
 | `MODEL` | Model name (e.g. `gemini-2.0-flash`, `gpt-4o-mini`) | `gpt-4o-mini` |
 | `EMBEDDING_MODEL` | Sentence-transformers model for RAG | `all-MiniLM-L6-v2` |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://postgres:postgres@db:5432/coderubric` |

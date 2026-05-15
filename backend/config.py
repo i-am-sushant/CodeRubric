@@ -7,6 +7,16 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings
 
+CHAT_COMPLETIONS_SUFFIX = "/chat/completions"
+
+
+def normalize_llm_api_base(value: str) -> str:
+    """Use the provider base URL even if a full chat completions URL is pasted."""
+    normalized = value.strip().rstrip("/")
+    if normalized.endswith(CHAT_COMPLETIONS_SUFFIX):
+        normalized = normalized[: -len(CHAT_COMPLETIONS_SUFFIX)]
+    return normalized
+
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -54,6 +64,7 @@ class Settings(BaseSettings):
     # LLM
     llm_api_key: str = os.getenv("LLM_API_KEY", os.getenv("OPENAI_API_KEY", ""))
     llm_api_type: str = os.getenv("LLM_API_TYPE", "openai")
+    llm_api_base: str = normalize_llm_api_base(os.getenv("LLM_API_BASE", ""))
     model: str = os.getenv("MODEL", "gpt-4o-mini")
     
     # Frontend URL (for CORS)

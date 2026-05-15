@@ -9,7 +9,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "15432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -47,6 +47,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_API_TYPE=${LLM_API_TYPE:-openai}
+      - LLM_API_BASE=${LLM_API_BASE:-}
       - MODEL=${MODEL:-gpt-4o-mini}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
       - VECTOR_STORE_PATH=/app/chroma_db
